@@ -12,6 +12,8 @@ In order to use JsonImap, you have to initialize the class with three parameters
 ## Roadmap
 * Cover all major functions of the PHP library
 * Implement [PHPMailer](https://github.com/PHPMailer/PHPMailer) for sending out an email
+* Update all comments on methods and properties
+* Make everything follow latest PSR Standards
 * Composer
 * Tests
 * REST API
