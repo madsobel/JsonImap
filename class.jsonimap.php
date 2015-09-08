@@ -15,30 +15,31 @@ class JsonImap
    * [$server description]
    * @var [type]
    */
-  private $server;
+  protected $server;
 
   /**
    * [$login description]
    * @var [type]
    */
-  private $login;
+  protected $login;
 
   /**
    * [$password description]
    * @var [type]
    */
-  private $password;
+  protected $password;
 
   /**
    * [$stream description]
    * @var [type]
    */
-  private $stream;
+  protected $stream;
 
   /**
-   * @param [type]
-   * @param [type]
-   * @param [type]
+   * [__construct description]
+   * @param [type] $server   [description]
+   * @param [type] $login    [description]
+   * @param [type] $password [description]
    */
   function __construct($server, $login, $password)
   {
@@ -49,24 +50,25 @@ class JsonImap
   }
 
   /**
-   * @return [type]
+   * [getMailboxes description]
+   * @return [type] [description]
    */
-  public function getFolders()
+  public function getMailboxes()
   {
-    $folders = [];
-    $mailboxes = imap_list($this->stream, $this->server, "*");
-    foreach ($mailboxes as $mailbox) {
-      $folders[] = str_replace($this->server, "", $mailbox);
+    $mailboxes = [];
+    $remoteMailboxes = imap_list($this->stream, $this->server, "*");
+    foreach ($remoteMailboxes as $remoteMailbox) {
+      $mailboxes[] = str_replace($this->server, "", $remoteMailbox);
     }
-    return $folders;
+    return $mailboxes;
   }
 
   /**
-   * [newFolder description]
+   * [newMailbox description]
    * @param  [type] $name [description]
    * @return [type]       [description]
    */
-  public function newFolder($name)
+  public function newMailbox($name)
   {
     if (imap_createmailbox($this->stream, $this->server . $name)) {
       return true;
@@ -74,12 +76,12 @@ class JsonImap
   }
 
   /**
-   * [updateFolder description]
+   * [updateMailbox description]
    * @param  [type] $oldName [description]
    * @param  [type] $newName [description]
    * @return [type]          [description]
    */
-  public function updateFolder($oldName, $newName)
+  public function updateMailbox($oldName, $newName)
   {
     if (imap_renamemailbox($this->stream, $this->server . $oldName, $this->server . $newName)) {
       return true;
@@ -87,54 +89,57 @@ class JsonImap
   }
 
   /**
-   * [deleteFolder description]
-   * @param  [type] $folder [description]
-   * @return [type]         [description]
+   * [deleteMailbox description]
+   * @param  [type] $mailbox [description]
+   * @return [type]          [description]
    */
-  public function deleteFolder($folder)
+  public function deleteMailbox($mailbox)
   {
-    if (imap_deletemailbox($this->stream, $this->server . $folder)) {
+    if (imap_deletemailbox($this->stream, $this->server . $mailbox)) {
       return true;
     }
   }
 
   /**
-   * @param  [type]
-   * @return [type]
+   * [getOverview description]
+   * @param  [type] $mailbox [description]
+   * @return [type]          [description]
    */
-  public function getOverview($folder)
+  public function getOverview($mailbox)
   {
-    imap_reopen($this->stream, $this->server . $folder);
+    imap_reopen($this->stream, $this->server . $mailbox);
     $mailboxCheck = imap_check($this->stream);
     if ($mailboxCheck->Nmsgs == 0) {
       return [];
     } else {
-      $folderOverview = imap_fetch_overview($this->stream, "1:{$mailboxCheck->Nmsgs}", 0);  
-      return $folderOverview;
+      $mailboxOverview = imap_fetch_overview($this->stream, "1:{$mailboxCheck->Nmsgs}", 0);  
+      return $mailboxOverview;
     }
   }
 
   /**
-   * @return [type]
+   * [getFullOverview description]
+   * @return [type] [description]
    */
   public function getFullOverview()
   {
     $fullOverview = [];
-    $folders = $this->getFolders();
-    foreach ($folders as $value) {
-      $fullOverview[$value] = $this->getOverview($value);
+    $mailboxes = $this->getMailboxes();
+    foreach ($mailboxes as $mailbox) {
+      $fullOverview[$mailbox] = $this->getOverview($mailbox);
     }
     return $fullOverview;
   }
 
   /**
-   * @param  [type]
-   * @param  [type]
-   * @return [type]
+   * [getItem description]
+   * @param  [type] $mailbox [description]
+   * @param  [type] $id      [description]
+   * @return [type]          [description]
    */
-  public function getItem($folder, $id)
+  public function getItem($mailbox, $id)
   {
-    imap_reopen($this->stream, $this->server . $folder);
+    imap_reopen($this->stream, $this->server . $mailbox);
     // "1" for plain text, "2" for HTML
     $item = imap_fetchbody($this->stream, $id, "1");
     return $item;
@@ -142,29 +147,29 @@ class JsonImap
 
   /**
    * [moveItem description]
-   * @param  [type] $items     [description]
-   * @param  [type] $oldFolder [description]
-   * @param  [type] $newFolder [description]
-   * @return [type]            [description]
+   * @param  [type] $items      [description]
+   * @param  [type] $oldMailbox [description]
+   * @param  [type] $newMailbox [description]
+   * @return [type]             [description]
    */
-  public function moveItem($items, $oldFolder, $newFolder)
+  public function moveItem($items, $oldMailbox, $newMailbox)
   {
-    imap_reopen($this->stream, $this->server . $oldFolder);
+    imap_reopen($this->stream, $this->server . $oldMailbox);
     $itemList = implode(',', $items);
-    if (imap_mail_move($this->stream, "{$itemList}", $newFolder, CP_UID)) {
+    if (imap_mail_move($this->stream, "{$itemList}", $newMailbox, CP_UID)) {
       return true;
     }
   }
 
   /**
    * [deleteItem description]
-   * @param  [type] $items  [description]
-   * @param  [type] $folder [description]
-   * @return [type]         [description]
+   * @param  [type] $items   [description]
+   * @param  [type] $mailbox [description]
+   * @return [type]          [description]
    */
-  public function deleteItem($items, $folder)
+  public function deleteItem($items, $mailbox)
   {
-    imap_reopen($this->stream, $this->server . $folder);
+    imap_reopen($this->stream, $this->server . $mailbox);
     $itemList = implode(',', $items);
     if (imap_delete($this->stream, "{$itemList}", FT_UID)) {
       return true;
@@ -172,29 +177,31 @@ class JsonImap
   }
 
   /**
-   * @param  [type]
-   * @param  [type]
-   * @return [type]
+   * [getHeader description]
+   * @param  [type] $mailbox [description]
+   * @param  [type] $id      [description]
+   * @return [type]          [description]
    */
-  public function getHeader($folder, $id)
+  public function getHeader($mailbox, $id)
   {
-    imap_reopen($this->stream, $this->server . $folder);
+    imap_reopen($this->stream, $this->server . $mailbox);
     $header = imap_fetchheader($this->stream, $id);
     return $header;
   }
 
   /**
-   * @return [type]
+   * [getQuota description]
+   * @return [type] [description]
    */
   public function getQuota()
   {
-    $folders = $this->getFolders();
-    $quota = imap_get_quotaroot($this->stream, $folders[0]);
+    $mailboxes = $this->getMailboxes();
+    $quota = imap_get_quotaroot($this->stream, $mailboxes[0]);
     return $quota;
   }
 
   /**
-   * 
+   * [__destruct description]
    */
   function __destruct()
   {
